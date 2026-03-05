@@ -2,15 +2,38 @@ import request from "supertest";
 import app from "../src/app.js";
 import User from "../src/models/User.js";
 import Task from "../src/models/Task.js";
+import mongoose from "mongoose";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 let token;
 let taskId;
 let userId;
 
 beforeAll(async () => {
+  // Try to connect to MongoDB
+  try {
+    const mongoUri = process.env.MONGO_URI || "mongodb://localhost:27017/taskmanager_test";
+    await mongoose.connect(mongoUri, {
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 5000,
+      connectTimeoutMS: 5000,
+    });
+    console.log("✓ Test database connected");
+    global.isMongoConnected = true;
+  } catch (error) {
+    console.warn("⚠ MongoDB connection failed - running tests without database");
+    console.warn("To fix: Install MongoDB locally or update MONGO_URI in .env file");
+    console.warn("Error:", error.message);
+    global.isMongoConnected = false;
+  }
+
   // Clear existing data
-  await User.deleteMany({});
-  await Task.deleteMany({});
+  if (global.isMongoConnected) {
+    await User.deleteMany({});
+    await Task.deleteMany({});
+  }
 
   // Register
   const registerRes = await request(app)
@@ -36,7 +59,9 @@ beforeAll(async () => {
 
 afterEach(async () => {
   // Clean up tasks after each test (but keep user)
-  await Task.deleteMany({});
+  if (global.isMongoConnected) {
+    await Task.deleteMany({});
+  }
 });
 
 describe("Task Routes", () => {

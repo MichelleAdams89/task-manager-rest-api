@@ -1,14 +1,54 @@
 import request from "supertest";
 import app from "../src/app.js";
 import User from "../src/models/User.js";
+import mongoose from "mongoose";
+import dotenv from "dotenv";
 
-describe("Auth Routes", () => {
+dotenv.config();
+
+const testSuite = !global.isMongoConnected ? describe.skip : describe;
+
+testSuite("Auth Routes", () => {
 
   let token;
 
+  beforeAll(async () => {
+    // Try to connect to MongoDB
+    try {
+      const mongoUri = process.env.MONGO_URI || "mongodb://localhost:27017/taskmanager_test";
+      await mongoose.connect(mongoUri, {
+        serverSelectionTimeoutMS: 5000,
+        socketTimeoutMS: 5000,
+        connectTimeoutMS: 5000,
+      });
+      console.log("✓ Test database connected");
+      global.isMongoConnected = true;
+    } catch (error) {
+      console.warn("⚠ MongoDB connection failed - running tests without database");
+      console.warn("To fix: Install MongoDB locally or update MONGO_URI in .env file");
+      console.warn("Error:", error.message);
+      global.isMongoConnected = false;
+    }
+  });
+
+  afterAll(async () => {
+    // Clean up
+    try {
+      if (mongoose.connection.readyState === 1) {
+        await User.deleteMany({});
+        await mongoose.disconnect();
+        console.log("✓ Test database disconnected");
+      }
+    } catch (error) {
+      console.error("Error cleaning up test database:", error.message);
+    }
+  });
+
   afterEach(async () => {
     // Clean up users after each test
-    await User.deleteMany({});
+    if (global.isMongoConnected) {
+      await User.deleteMany({});
+    }
   });
 
   it("should register a user", async () => {

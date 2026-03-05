@@ -3,6 +3,9 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
+// Global flag to indicate if MongoDB is connected
+global.isMongoConnected = false;
+
 // Setup for tests - connect to MongoDB if available
 beforeAll(async () => {
   try {
@@ -14,10 +17,12 @@ beforeAll(async () => {
       connectTimeoutMS: 5000,
     });
     console.log("✓ Test database connected");
+    global.isMongoConnected = true;
   } catch (error) {
-    console.warn("⚠ MongoDB not available in test environment");
-    console.warn("   Continuing with in-memory data only");
-    // Don't exit - allow tests to run with in-memory data
+    console.warn("⚠ MongoDB connection failed - running tests without database");
+    console.warn("To fix: Install MongoDB locally or update MONGO_URI in .env file");
+    console.warn("Error:", error.message);
+    global.isMongoConnected = false;
   }
 });
 
